@@ -161,7 +161,6 @@ app.get("/car/:id", (req, res) => __awaiter(void 0, void 0, void 0, function* ()
     let sql = ` SELECT * FROM cars WHERE id = "${id}"`;
     db_1.db.execute(sql);
     const resu = (yield db_1.db.execute(sql))[0];
-    console.log(resu);
     res.status(201).json(resu);
 }));
 app.post("/jobm", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -220,6 +219,22 @@ app.get("/job/:id", (req, res) => __awaiter(void 0, void 0, void 0, function* ()
     const resu = (yield db_1.db.execute(sql))[0];
     console.log(resu);
     res.status(201).json(resu);
+}));
+app.post("/job/mecanic", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const id = req.body.id;
+    const mecid = req.body.mecid;
+    console.log("mecanic:" + mecid);
+    let sql = ` UPDATE jobs SET mecanicId = "${mecid}" WHERE (id = "${id}");`;
+    const result = (yield db_1.db.execute(sql))[0];
+    const warn = result.waringStatus;
+    if (warn) {
+        console.log(result);
+        res.status(500).send();
+    }
+    else {
+        console.log(result);
+        res.status(201).send();
+    }
 }));
 app.get("/jobs/:id", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const id = req.params.id;
@@ -291,11 +306,43 @@ app.post("/cars/jobs", (req, res) => __awaiter(void 0, void 0, void 0, function*
     let sql = `SELECT * FROM cars;`;
     const [cars] = (yield db_1.db.execute(sql));
     const carswjobs = cars.map((car) => __awaiter(void 0, void 0, void 0, function* () {
-        let sql = `SELECT status,tasks,date,id  FROM jobs WHERE carId=${car.id}`;
+        let sql = `SELECT *  FROM jobs WHERE carId=${car.id};`;
+        const [jobs] = yield db_1.db.execute(sql);
+        const jobswmec = jobs.map((job) => __awaiter(void 0, void 0, void 0, function* () {
+            if (job.mecanicId != 0) {
+                let sql2 = `Select * from users where id=${job.mecanicId};`;
+                const [user] = (yield db_1.db.execute(sql2))[0];
+                return Object.assign(Object.assign({}, job), { mecanic: user });
+            }
+            else
+                return Object.assign(Object.assign({}, job), { mecanic: null });
+        }));
+        return Promise.all(jobswmec).then((result) => {
+            return Object.assign(Object.assign({}, car), { jobs: result });
+        });
+    }));
+    Promise.all(carswjobs).then((results) => {
+        console.log(results);
+        res.status(201).json(results);
+    });
+}));
+app.post("/mecanic/car", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const token = req.body.token || req.query.token;
+    if (!token) {
+        return res.status(403).json({ err: "A token is required for display" });
+    }
+    const decoded = jsonwebtoken_1.default.verify(token, process.env.TOKEN_KEY);
+    let userId = decoded.id;
+    console.log(userId);
+    let sql = `SELECT * FROM cars;`;
+    const [cars] = (yield db_1.db.execute(sql));
+    const carswemail = cars.map((car) => __awaiter(void 0, void 0, void 0, function* () {
+        let sql = `SELECT * FROM jobs WHERE carId=${car.id} AND mecanicId=${userId}`;
         const [jobs] = yield db_1.db.execute(sql);
         return Object.assign(Object.assign({}, car), { jobs: jobs });
     }));
-    Promise.all(carswjobs).then((results) => {
+    console.log(carswemail);
+    Promise.all(carswemail).then((results) => {
         res.status(201).json(results);
     });
 }));
@@ -439,7 +486,6 @@ app.post("/mecanic", (req, res) => __awaiter(void 0, void 0, void 0, function* (
     let sql = `SELECT * FROM users WHERE role=1`;
     const [users] = (yield db_1.db.execute(sql));
     res.status(201).json(users);
-    console.log(users);
 }));
 app.post("/mecanic/add", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const token = req.body.token || req.query.token;

@@ -1,6 +1,6 @@
 import { db } from "./db";
 
-import bodyParser from "body-parser";
+import bodyParser, { json } from "body-parser";
 import cors from 'cors';
 import jwt from "jsonwebtoken";
 
@@ -170,7 +170,6 @@ app.get("/car/:id", async(req,res) =>{
     let sql =` SELECT * FROM cars WHERE id = "${id}"`;
     db.execute(sql);
     const resu = (await db.execute(sql))[0];
-    console.log(resu);
     res.status(201).json((resu as any))
 
 })
@@ -230,6 +229,23 @@ app.get("/job/:id", async(req,res) =>{
     const resu = (await db.execute(sql))[0];
     console.log(resu);
     res.status(201).json((resu as any))
+
+})
+app.post("/job/mecanic", async(req,res) =>{
+    const id=req.body.id
+    const mecid= req.body.mecid;
+    console.log("mecanic:"+mecid);
+    
+    let sql =` UPDATE jobs SET mecanicId = "${mecid}" WHERE (id = "${id}");`;
+    const result = (await db.execute(sql))[0];
+    const warn = (result as any).waringStatus
+    if(warn){
+        console.log(result);
+        res.status(500).send();
+    } else {
+        console.log(result);
+        res.status(201).send();
+      }
 
 })
 app.get("/jobs/:id", async(req,res) =>{
@@ -302,14 +318,50 @@ app.post("/cars/jobs", async(req,res)=>{
     let sql = `SELECT * FROM cars;`
     const [cars] = (await db.execute(sql)) as Array<RowDataPacket>
     const carswjobs = cars.map(async(car: {nPlate:number,id:number}) => {
-        let sql = `SELECT status,tasks,date,id  FROM jobs WHERE carId=${car.id}`;
+        let sql = `SELECT *  FROM jobs WHERE carId=${car.id};`;
         const [jobs] = await db.execute(sql) as Array<RowDataPacket>;
-        return {...car, jobs: jobs}
+        const jobswmec=jobs.map(async(job:{mecanicId:number})=>{
+            if(job.mecanicId!=0){
+                let sql2=`Select * from users where id=${job.mecanicId};`;
+            const [user]=(await db.execute(sql2) as RowDataPacket[][])[0];
+            return{...job,mecanic:user}
+            }
+            else
+                return{...job, mecanic:null}
+            
+        })
+        return Promise.all(jobswmec).then((result) => {
+            
+            return {...car, jobs: result}
+        })
     })
     Promise.all(carswjobs).then((results) => {
+        console.log(results);
         res.status(201).json(results)
     })
 })
+app.post("/mecanic/car", async(req,res) => {
+    const token = req.body.token || req.query.token;
+    if (!token) {
+        return res.status(403).json({err: "A token is required for display"});
+    }
+    const decoded = jwt.verify(token, process.env.TOKEN_KEY as string) as any
+    let userId=decoded.id;
+    console.log(userId);
+    let sql = `SELECT * FROM cars;`
+    const [cars] = (await db.execute(sql)) as Array<RowDataPacket>
+
+    const carswemail = cars.map(async(car: {id: number, VIN: string, nPlate: string, userId:number}) => {
+        let sql = `SELECT * FROM jobs WHERE carId=${car.id} AND mecanicId=${userId}`;
+        const [jobs] = await db.execute(sql) as Array<RowDataPacket>;
+        return {...car, jobs:jobs}
+    })
+
+    console.log(carswemail);
+
+    Promise.all(carswemail).then((results) => {
+        res.status(201).json(results)
+    }) })
 app.post("/cara", async(req,res) => {
     const token = req.body.token || req.query.token;
     if (!token) {
@@ -452,7 +504,6 @@ app.post("/mecanic", async(req,res) => {
     let sql = `SELECT * FROM users WHERE role=1`;
     const [users] = (await db.execute(sql)) as Array<RowDataPacket>
     res.status(201).json(users)
-    console.log(users);
 })
 app.post("/mecanic/add", async(req,res) => {
     const token = req.body.token || req.query.token;
