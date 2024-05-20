@@ -337,13 +337,13 @@ app.post("/mecanic/car", (req, res) => __awaiter(void 0, void 0, void 0, functio
     let sql = `SELECT * FROM cars;`;
     const [cars] = (yield db_1.db.execute(sql));
     const carswemail = cars.map((car) => __awaiter(void 0, void 0, void 0, function* () {
-        let sql = `SELECT * FROM jobs WHERE carId=${car.id} AND mecanicId=${userId}`;
+        let sql = `SELECT * FROM jobs WHERE carId=${car.id} AND mecanicId=${userId} AND status!="Done"`;
         const [jobs] = yield db_1.db.execute(sql);
         return Object.assign(Object.assign({}, car), { jobs: jobs });
     }));
     console.log(carswemail);
     Promise.all(carswemail).then((results) => {
-        res.status(201).json(results);
+        res.status(201).json(results.filter(car => car.jobs.length > 0));
     });
 }));
 app.post("/cara", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -467,18 +467,24 @@ app.post("/checklist/add", (req, res) => __awaiter(void 0, void 0, void 0, funct
 app.post("/mecanic/jobs", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const token = req.body.token || req.query.token;
     const decoded = jsonwebtoken_1.default.verify(token, process.env.TOKEN_KEY);
-    let sql = `SELECT nPlate, id FROM cars`;
-    const [car] = (yield db_1.db.execute(sql));
-    const jobswcars = car.map((job) => __awaiter(void 0, void 0, void 0, function* () {
-        let sql2 = `SELECT * FROM jobs Where status !="Done" AND carId=${job.id};`;
-        const [jobs] = yield db_1.db.execute(sql2);
-        return Object.assign(Object.assign({}, job), { jobs: jobs });
+    let sql = `SELECT * FROM users WHERE role="1"`;
+    const [users] = (yield db_1.db.execute(sql));
+    console.log(users);
+    const mecwjobs = users.map((user) => __awaiter(void 0, void 0, void 0, function* () {
+        let sql2 = `Select * FROM jobs WHERE mecanicId=${user.id} AND status!="Done"`;
+        const [job] = yield db_1.db.execute(sql2);
+        const jobswmec = job.map((job) => __awaiter(void 0, void 0, void 0, function* () {
+            let sql2 = `Select * from cars where id=${job.carId};`;
+            const [car] = (yield db_1.db.execute(sql2))[0];
+            return { id: job.id, tasks: job.tasks, date: job.date, status: job.status, car: car };
+        }));
+        return Promise.all(jobswmec).then((result) => {
+            return Object.assign(Object.assign({}, user), { jobs: result });
+        });
     }));
-    console.log(jobswcars);
-    Promise.all(jobswcars).then((results) => {
+    Promise.all(mecwjobs).then((results) => {
         res.status(201).json(results);
     });
-    console.log(jobswcars);
 }));
 app.post("/mecanic", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const token = req.body.token || req.query.token;

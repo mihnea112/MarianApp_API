@@ -8,6 +8,7 @@ import express, {Express, Response, Request} from "express"
 import { RowDataPacket } from "mysql2";
 import e from "cors";
 import { execArgv } from "process";
+import { log } from "console";
 const app = express();
 
 require('dotenv').config()
@@ -352,15 +353,16 @@ app.post("/mecanic/car", async(req,res) => {
     const [cars] = (await db.execute(sql)) as Array<RowDataPacket>
 
     const carswemail = cars.map(async(car: {id: number, VIN: string, nPlate: string, userId:number}) => {
-        let sql = `SELECT * FROM jobs WHERE carId=${car.id} AND mecanicId=${userId}`;
+        let sql = `SELECT * FROM jobs WHERE carId=${car.id} AND mecanicId=${userId} AND status!="Done"`;
         const [jobs] = await db.execute(sql) as Array<RowDataPacket>;
         return {...car, jobs:jobs}
+
     })
 
     console.log(carswemail);
 
     Promise.all(carswemail).then((results) => {
-        res.status(201).json(results)
+        res.status(201).json(results.filter(car => car.jobs.length > 0))
     }) })
 app.post("/cara", async(req,res) => {
     const token = req.body.token || req.query.token;
@@ -483,19 +485,24 @@ app.post("/checklist/add", async(req,res) => {
 app.post("/mecanic/jobs", async(req,res) => {
     const token = req.body.token || req.query.token;
     const decoded = jwt.verify(token, process.env.TOKEN_KEY as string) as any 
-    let sql = `SELECT nPlate, id FROM cars`;
-    const [car] = (await db.execute(sql)) as Array<RowDataPacket>
-    const jobswcars= car.map(async (job:any)=>{
-        let sql2=`SELECT * FROM jobs Where status !="Done" AND carId=${job.id};`
-        const [jobs] = await db.execute(sql2) as Array<RowDataPacket>;
-        return {...job, jobs: jobs}
+    let sql = `SELECT * FROM users WHERE role="1"`;
+    const [users] = (await db.execute(sql)) as Array<RowDataPacket>
+    console.log(users);
+    const mecwjobs=users.map(async(user:any)=>{
+        let sql2=`Select * FROM jobs WHERE mecanicId=${user.id} AND status!="Done"`
+        const [job] = await db.execute(sql2) as Array<RowDataPacket>;
+        const jobswmec=job.map(async(job:any)=>{
+            let sql2=`Select * from cars where id=${job.carId};`;
+            const [car]=(await db.execute(sql2) as RowDataPacket[][])[0];
+            return{id:job.id,tasks:job.tasks,date:job.date,status:job.status,car:car}        
+        })
+        return Promise.all(jobswmec).then((result) => {
+            return {...user, jobs: result}
+        })
     })
-    console.log(jobswcars);
-
-    Promise.all(jobswcars).then((results) => {
+    Promise.all(mecwjobs).then((results) => {
         res.status(201).json(results)
     })
-    console.log(jobswcars);
 })
 
 app.post("/mecanic", async(req,res) => {
