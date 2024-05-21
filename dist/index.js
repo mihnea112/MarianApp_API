@@ -18,13 +18,15 @@ const cors_1 = __importDefault(require("cors"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const express_1 = __importDefault(require("express"));
 const app = (0, express_1.default)();
-require('dotenv').config();
+require("dotenv").config();
 app.use((0, cors_1.default)());
 app.use(body_parser_1.default.json());
 app.get("/ampulamare", (req, res) => {
     res.status(201).json({ answ: "femeile moare" });
 });
 app.post("/register", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const bcrypt = require("bcrypt");
+    const salts = parseInt(process.env.saltRounds || "");
     const email = req.body.email;
     const password = req.body.password;
     const name = req.body.name;
@@ -32,13 +34,15 @@ app.post("/register", (req, res) => __awaiter(void 0, void 0, void 0, function* 
     const telefon = req.body.telefon;
     let sql = ` SELECT * FROM users WHERE email = "${email}"`;
     const [resu] = yield db_1.db.execute(sql);
+    const passwordHash = yield bcrypt.hash(password, salts);
+    console.log(yield passwordHash);
     if (!resu.length) {
         let sql2 = `INSERT INTO users (
                     email, password, name, adresa, telefon
                ) 
                VALUES (
                 '${email}',
-                '${password}',
+                '${passwordHash}',
                 '${name}',
                 '${adresa}',
                 '${telefon}'
@@ -58,17 +62,26 @@ app.post("/register", (req, res) => __awaiter(void 0, void 0, void 0, function* 
         }
     }
     else {
-        res.status(409).json({ err: "A user with this email adress already exists. Try loging in." });
+        res
+            .status(409)
+            .json({
+            err: "A user with this email adress already exists. Try loging in.",
+        });
     }
 }));
 app.post("/login", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const bcrypt = require("bcrypt");
+    const salts = parseInt(process.env.saltRounds || "");
     const email = req.body.email;
     const password = req.body.password;
     let sql = ` SELECT * FROM users WHERE email = "${email}"`;
     const resu = (yield db_1.db.execute(sql))[0];
     if (resu.length) {
         const [user] = resu;
-        if (user.password == password) {
+        console.log(user.password);
+        console.log(password);
+        const match = yield bcrypt.compare(password, user.password);
+        if (match == true) {
             const token = jsonwebtoken_1.default.sign({ id: user.id, email, role: user.role }, process.env.TOKEN_KEY, {
                 expiresIn: "2d",
             });
@@ -85,18 +98,24 @@ app.post("/login", (req, res) => __awaiter(void 0, void 0, void 0, function* () 
 app.get("/user", (req, res) => {
     const token = req.body.token || req.query.token;
     if (!token) {
-        return res.status(403).json({ err: "A token is required for authentication" });
+        return res
+            .status(403)
+            .json({ err: "A token is required for authentication" });
     }
     const decoded = jsonwebtoken_1.default.verify(token, process.env.TOKEN_KEY);
     if (token != null)
-        return res.status(201).json({ role: decoded.role, email: decoded.email });
+        return res
+            .status(201)
+            .json({ role: decoded.role, email: decoded.email });
     else
         return res.status(403);
 });
 app.get("/userdata", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const token = req.body.token || req.query.token;
     if (!token) {
-        return res.status(403).json({ err: "A token is required for authentication" });
+        return res
+            .status(403)
+            .json({ err: "A token is required for authentication" });
     }
     const decoded = jsonwebtoken_1.default.verify(token, process.env.TOKEN_KEY);
     let sql = ` SELECT name, email, adresa, telefon FROM users WHERE id = "${decoded.id}"`;
@@ -170,7 +189,7 @@ app.post("/jobm", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     }
     const decoded = jsonwebtoken_1.default.verify(token, process.env.TOKEN_KEY);
     const role = decoded.id;
-    if (role != '0') {
+    if (role != "0") {
         let sql = `SELECT * FROM jobs`;
         db_1.db.execute(sql);
         const resu = (yield db_1.db.execute(sql))[0];
@@ -178,7 +197,9 @@ app.post("/jobm", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         res.status(201).json(resu);
     }
     else {
-        return res.status(403).json({ err: "A valid user is required for display" });
+        return res
+            .status(403)
+            .json({ err: "A valid user is required for display" });
     }
 }));
 app.post("/jobs/add", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -188,7 +209,7 @@ app.post("/jobs/add", (req, res) => __awaiter(void 0, void 0, void 0, function* 
     if (!token) {
         return res.status(403).json({ err: "A token is required for display" });
     }
-    const now = new Date().toISOString().split('T')[0];
+    const now = new Date().toISOString().split("T")[0];
     const decoded = jsonwebtoken_1.default.verify(token, process.env.TOKEN_KEY);
     let sql2 = `INSERT INTO jobs (
         carId, tasks, userId, status, date
@@ -307,7 +328,7 @@ app.post("/cars/jobs", (req, res) => __awaiter(void 0, void 0, void 0, function*
     const [cars] = (yield db_1.db.execute(sql));
     const carswjobs = cars.map((car) => __awaiter(void 0, void 0, void 0, function* () {
         let sql = `SELECT *  FROM jobs WHERE carId=${car.id};`;
-        const [jobs] = yield db_1.db.execute(sql);
+        const [jobs] = (yield db_1.db.execute(sql));
         const jobswmec = jobs.map((job) => __awaiter(void 0, void 0, void 0, function* () {
             if (job.mecanicId != 0) {
                 let sql2 = `Select * from users where id=${job.mecanicId};`;
@@ -338,12 +359,12 @@ app.post("/mecanic/car", (req, res) => __awaiter(void 0, void 0, void 0, functio
     const [cars] = (yield db_1.db.execute(sql));
     const carswemail = cars.map((car) => __awaiter(void 0, void 0, void 0, function* () {
         let sql = `SELECT * FROM jobs WHERE carId=${car.id} AND mecanicId=${userId} AND status!="Done"`;
-        const [jobs] = yield db_1.db.execute(sql);
+        const [jobs] = (yield db_1.db.execute(sql));
         return Object.assign(Object.assign({}, car), { jobs: jobs });
     }));
     console.log(carswemail);
     Promise.all(carswemail).then((results) => {
-        res.status(201).json(results.filter(car => car.jobs.length > 0));
+        res.status(201).json(results.filter((car) => car.jobs.length > 0));
     });
 }));
 app.post("/cara", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -356,7 +377,7 @@ app.post("/cara", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const [cars] = (yield db_1.db.execute(sql));
     const carswemail = cars.map((car) => __awaiter(void 0, void 0, void 0, function* () {
         let sql = `SELECT name FROM users WHERE id=${car.userId}`;
-        const [email] = yield db_1.db.execute(sql);
+        const [email] = (yield db_1.db.execute(sql));
         return Object.assign(Object.assign({}, car), { name: email[0].name });
     }));
     console.log(carswemail);
@@ -472,11 +493,17 @@ app.post("/mecanic/jobs", (req, res) => __awaiter(void 0, void 0, void 0, functi
     console.log(users);
     const mecwjobs = users.map((user) => __awaiter(void 0, void 0, void 0, function* () {
         let sql2 = `Select * FROM jobs WHERE mecanicId=${user.id} AND status!="Done"`;
-        const [job] = yield db_1.db.execute(sql2);
+        const [job] = (yield db_1.db.execute(sql2));
         const jobswmec = job.map((job) => __awaiter(void 0, void 0, void 0, function* () {
             let sql2 = `Select * from cars where id=${job.carId};`;
             const [car] = (yield db_1.db.execute(sql2))[0];
-            return { id: job.id, tasks: job.tasks, date: job.date, status: job.status, car: car };
+            return {
+                id: job.id,
+                tasks: job.tasks,
+                date: job.date,
+                status: job.status,
+                car: car,
+            };
         }));
         return Promise.all(jobswmec).then((result) => {
             return Object.assign(Object.assign({}, user), { jobs: result });
