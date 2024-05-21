@@ -525,6 +525,23 @@ app.post("/mecanic/delete", (req, res) => __awaiter(void 0, void 0, void 0, func
         res.status(201).send();
     }
 }));
+app.post("/feedback", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const token = req.body.token || req.query.token;
+    const jobId = req.body.jobId;
+    const content = req.body.content;
+    const decoded = jsonwebtoken_1.default.verify(token, process.env.TOKEN_KEY);
+    let sql = `UPDATE jobs SET feedback = "${content}" WHERE (id = "${jobId}");`;
+    const result = (yield db_1.db.execute(sql))[0];
+    const warn = result.affectedRows;
+    if (warn == 0) {
+        console.log(result);
+        res.status(403).send();
+    }
+    else {
+        console.log(result);
+        res.status(201).send();
+    }
+}));
 const port = process.env.PORT || 3001;
 app.listen(port, () => {
     console.log("Server started on port " + port);

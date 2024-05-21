@@ -542,6 +542,22 @@ app.post("/mecanic/delete", async(req,res) => {
         res.status(201).send();
       }
 })
+app.post("/feedback", async(req,res) => {
+    const token = req.body.token || req.query.token;
+    const jobId= req.body.jobId;
+    const content= req.body.content;
+    const decoded = jwt.verify(token, process.env.TOKEN_KEY as string) as any 
+    let sql = `UPDATE jobs SET feedback = "${content}" WHERE (id = "${jobId}");`;
+    const result = (await db.execute(sql))[0];
+    const warn = (result as any).affectedRows
+    if(warn==0){
+        console.log(result);
+        res.status(403).send();
+    } else {
+        console.log(result);
+        res.status(201).send();
+      }
+})
 const port = process.env.PORT || 3001
 
 app.listen(port, () => {
