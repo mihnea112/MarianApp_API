@@ -1,4 +1,5 @@
 import { db } from "./db";
+import { sendEmail } from "./mailer";
 
 import bodyParser, { json } from "body-parser";
 import cors from "cors";
@@ -61,11 +62,9 @@ app.post("/register", async (req, res) => {
       res.status(201).json({ token: token });
     }
   } else {
-    res
-      .status(409)
-      .json({
-        err: "A user with this email adress already exists. Try loging in.",
-      });
+    res.status(409).json({
+      err: "A user with this email adress already exists. Try loging in.",
+    });
   }
 });
 app.post("/login", async (req, res) => {
@@ -91,6 +90,11 @@ app.post("/login", async (req, res) => {
           expiresIn: "2d",
         }
       );
+      const to = "ayanna.mihnea@yahoo.com";
+      const subject = "Test Email";
+      const text =
+        "Hello, this is a test email sent from Node.js with TypeScript!";
+      await sendEmail(to, subject, text);
       res.status(201).json({ token: token, role: user.role });
     } else {
       res.status(410).json({ err: "password is incorrect" });

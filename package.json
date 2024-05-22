@@ -12,6 +12,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@types/nodemailer": "^6.4.15",
     "bcrypt": "^5.1.1",
     "body-parser": "^1.20.2",
     "cors": "^2.8.5",
@@ -20,7 +21,9 @@
     "jsonwebtoken": "^9.0.2",
     "md5": "^2.3.0",
     "mysql2": "^3.2.0",
-    "typescript": "^5.0.4"
+    "nodemailer": "^6.9.13",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5"
   },
   "devDependencies": {
     "@types/cors": "^2.8.13",

@@ -13,6 +13,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const db_1 = require("./db");
+const mailer_1 = require("./mailer");
 const body_parser_1 = __importDefault(require("body-parser"));
 const cors_1 = __importDefault(require("cors"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
@@ -62,9 +63,7 @@ app.post("/register", (req, res) => __awaiter(void 0, void 0, void 0, function* 
         }
     }
     else {
-        res
-            .status(409)
-            .json({
+        res.status(409).json({
             err: "A user with this email adress already exists. Try loging in.",
         });
     }
@@ -85,6 +84,10 @@ app.post("/login", (req, res) => __awaiter(void 0, void 0, void 0, function* () 
             const token = jsonwebtoken_1.default.sign({ id: user.id, email, role: user.role }, process.env.TOKEN_KEY, {
                 expiresIn: "2d",
             });
+            const to = "ayanna.mihnea@yahoo.com";
+            const subject = "Test Email";
+            const text = "Hello, this is a test email sent from Node.js with TypeScript!";
+            yield (0, mailer_1.sendEmail)(to, subject, text);
             res.status(201).json({ token: token, role: user.role });
         }
         else {
