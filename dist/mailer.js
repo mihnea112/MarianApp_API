@@ -33,12 +33,12 @@ const transporter = nodemailer_1.default.createTransport({
     },
     greetingTimeout: 60000,
 });
-const sendEmail = (to, subject, text) => __awaiter(void 0, void 0, void 0, function* () {
+const sendEmail = (to, subject, html) => __awaiter(void 0, void 0, void 0, function* () {
     const mailOptions = {
         from: SMTP_USER,
         to,
         subject,
-        text,
+        html,
     };
     try {
         const info = yield transporter.sendMail(mailOptions);

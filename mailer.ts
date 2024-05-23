@@ -23,12 +23,12 @@ const transporter = nodemailer.createTransport({
   greetingTimeout: 60000, 
 });
 
-export const sendEmail = async (to: string, subject: string, text: string) => {
+export const sendEmail = async (to: string, subject: string, html: string) => {
   const mailOptions = {
     from: SMTP_USER,
     to,
     subject,
-    text,
+    html,
   };
 
   try {

@@ -84,10 +84,11 @@ app.post("/login", (req, res) => __awaiter(void 0, void 0, void 0, function* () 
             const token = jsonwebtoken_1.default.sign({ id: user.id, email, role: user.role }, process.env.TOKEN_KEY, {
                 expiresIn: "2d",
             });
-            const to = "ayanna.mihnea@yahoo.com";
-            const subject = "Test Email";
-            const text = "Hello, this is a test email sent from Node.js with TypeScript!";
-            yield (0, mailer_1.sendEmail)(to, subject, text);
+            //   const to = "ayanna.mihnea@yahoo.com";
+            //   const subject = "Test Email";
+            //   const text =
+            //     "Hello, this is a test email sent from Node.js with TypeScript!";
+            //   await sendEmail(to, subject, text);
             res.status(201).json({ token: token, role: user.role });
         }
         else {
@@ -256,7 +257,16 @@ app.post("/job/mecanic", (req, res) => __awaiter(void 0, void 0, void 0, functio
         res.status(500).send();
     }
     else {
-        console.log(result);
+        if (mecid != 0) {
+            let sql = `Select email FROM users WHERE id=${mecid}`;
+            const [ress] = (yield db_1.db.execute(sql));
+            const to = ress[0].email;
+            const subject = "Job nou arondat";
+            const html = "<h1>Va salutam!</h1></br> <p>Job-ul cu numarul <b># " +
+                id +
+                "</b> v-a fost arondat. Va rugam sa modificati status-ul si sa completati checklist-ul la final de service!<p></br> Echipa Smart Service App";
+            yield (0, mailer_1.sendEmail)(to, subject, html);
+        }
         res.status(201).send();
     }
 }));
@@ -299,14 +309,16 @@ app.post("/inspection", (req, res) => __awaiter(void 0, void 0, void 0, function
 }));
 app.post("/status", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const token = req.body.token || req.query.token;
+    const nPlate = req.body.nPlate;
     const id = req.body.id;
-    const status = req.body.status;
-    console.log(id + " " + status);
+    const uId = req.body.uId;
+    const statuss = req.body.status;
+    console.log(id + " " + statuss);
     if (!token) {
         return res.status(403).json({ err: "A token is required for display" });
     }
     const decoded = jsonwebtoken_1.default.verify(token, process.env.TOKEN_KEY);
-    let sql2 = `UPDATE jobs SET status = "${status}" WHERE (id = "${id}");`;
+    let sql2 = `UPDATE jobs SET status = "${statuss}" WHERE (id = "${id}");`;
     const result = (yield db_1.db.execute(sql2))[0];
     const warn = result.waringStatus;
     if (warn) {
@@ -314,11 +326,24 @@ app.post("/status", (req, res) => __awaiter(void 0, void 0, void 0, function* ()
         res.status(500).send();
     }
     else {
-        let sql = ` SELECT * FROM jobs WHERE id = "${id}"`;
-        db_1.db.execute(sql);
-        const resu = (yield db_1.db.execute(sql))[0];
-        console.log(resu);
-        res.status(201).json(resu);
+        let sql = `Select email FROM users WHERE id=${uId}`;
+        const [ress] = (yield db_1.db.execute(sql));
+        const to = ress[0].email;
+        if (statuss === "Done") {
+            const subject = "Masina dvs. este gata";
+            const html = "<h1>Va salutam!</h1></br> <p>Masina cu numarul de inmatriculare <b>" +
+                nPlate +
+                "</b> este gata. Va asteptam sa o preluati!<p></br> Echipa Smart Service App";
+            yield (0, mailer_1.sendEmail)(to, subject, html);
+        }
+        else if (statuss === "In Progress") {
+            const subject = "Masina dvs. a fost preluata";
+            const html = "<h1>Va salutam!</h1></br> <p>Masina cu numarul de inmatriculare <b>" +
+                nPlate +
+                "</b> a fost preluata de unul dintre mecanicii nostrii. Va vom tine la curent cu statusul acesteia!<p></br> Echipa Smart Service App";
+            yield (0, mailer_1.sendEmail)(to, subject, html);
+        }
+        res.status(201).send;
     }
 }));
 app.post("/cars/jobs", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
