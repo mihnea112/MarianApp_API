@@ -261,10 +261,10 @@ app.post("/job/mecanic", (req, res) => __awaiter(void 0, void 0, void 0, functio
             let sql = `Select email FROM users WHERE id=${mecid}`;
             const [ress] = (yield db_1.db.execute(sql));
             const to = ress[0].email;
-            const subject = "Job nou arondat";
-            const html = "<h1>Va salutam!</h1></br> <p>Job-ul cu numarul <b># " +
+            const subject = "Sarcina noua arondata";
+            const html = "<h1>Va salutam!</h1></br> <p>Sarcina cu numarul <b># " +
                 id +
-                "</b> v-a fost arondat. Va rugam sa modificati status-ul si sa completati checklist-ul la final de service!<p></br> Echipa Smart Service App";
+                "</b> v-a fost arondata. Va rugam sa modificati status-ul si sa completati checklist-ul la final de service!<p></br> Echipa Smart Service App";
             yield (0, mailer_1.sendEmail)(to, subject, html);
         }
         res.status(201).send();

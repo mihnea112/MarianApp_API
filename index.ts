@@ -265,11 +265,11 @@ app.post("/job/mecanic", async (req, res) => {
       let sql = `Select email FROM users WHERE id=${mecid}`;
       const [ress] = (await db.execute(sql)) as Array<RowDataPacket>;
       const to = (ress as any)[0].email;
-      const subject = "Job nou arondat";
+      const subject = "Sarcina noua arondata";
       const html =
-        "<h1>Va salutam!</h1></br> <p>Job-ul cu numarul <b># " +
+        "<h1>Va salutam!</h1></br> <p>Sarcina cu numarul <b># " +
         id +
-        "</b> v-a fost arondat. Va rugam sa modificati status-ul si sa completati checklist-ul la final de service!<p></br> Echipa Smart Service App";
+        "</b> v-a fost arondata. Va rugam sa modificati status-ul si sa completati checklist-ul la final de service!<p></br> Echipa Smart Service App";
       await sendEmail(to, subject, html);
     }
     res.status(201).send();
