@@ -35,7 +35,7 @@ const transporter = nodemailer_1.default.createTransport({
 });
 const sendEmail = (to, subject, html) => __awaiter(void 0, void 0, void 0, function* () {
     const mailOptions = {
-        from: `"Smart Service APP"<${SMTP_USER}>`,
+        from: `"Smart Service App"<${SMTP_USER}>`,
         to,
         subject,
         html,

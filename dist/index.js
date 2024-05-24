@@ -19,6 +19,7 @@ const cors_1 = __importDefault(require("cors"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const express_1 = __importDefault(require("express"));
 const app = (0, express_1.default)();
+const validator = require('validator');
 require("dotenv").config();
 app.use((0, cors_1.default)());
 app.use(body_parser_1.default.json());
@@ -28,11 +29,11 @@ app.get("/ampulamare", (req, res) => {
 app.post("/register", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const bcrypt = require("bcrypt");
     const salts = parseInt(process.env.saltRounds || "");
-    const email = req.body.email;
+    const email = validator.escape(req.body.email);
     const password = req.body.password;
-    const name = req.body.name;
-    const adresa = req.body.adresa;
-    const telefon = req.body.telefon;
+    const name = validator.escape(req.body.name);
+    const adresa = validator.escape(req.body.adresa);
+    const telefon = validator.escape(req.body.telefon);
     let sql = ` SELECT * FROM users WHERE email = "${email}"`;
     const [resu] = yield db_1.db.execute(sql);
     const passwordHash = yield bcrypt.hash(password, salts);
@@ -71,7 +72,7 @@ app.post("/register", (req, res) => __awaiter(void 0, void 0, void 0, function* 
 app.post("/login", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const bcrypt = require("bcrypt");
     const salts = parseInt(process.env.saltRounds || "");
-    const email = req.body.email;
+    const email = validator.escape(req.body.email);
     const password = req.body.password;
     let sql = ` SELECT * FROM users WHERE email = "${email}"`;
     const resu = (yield db_1.db.execute(sql))[0];
@@ -101,18 +102,16 @@ app.post("/login", (req, res) => __awaiter(void 0, void 0, void 0, function* () 
 }));
 app.get("/user", (req, res) => {
     const token = req.body.token || req.query.token;
-    if (!token) {
-        return res
-            .status(403)
-            .json({ err: "A token is required for authentication" });
+    console.log("TOKEN:" + token);
+    if (token == "null") {
+        return res.status(201).json({ role: 0 });
     }
-    const decoded = jsonwebtoken_1.default.verify(token, process.env.TOKEN_KEY);
-    if (token != null)
+    else {
+        const decoded = jsonwebtoken_1.default.verify(token, process.env.TOKEN_KEY);
         return res
             .status(201)
             .json({ role: decoded.role, email: decoded.email });
-    else
-        return res.status(403);
+    }
 });
 app.get("/userdata", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const token = req.body.token || req.query.token;
@@ -169,14 +168,30 @@ app.post("/car/add", (req, res) => __awaiter(void 0, void 0, void 0, function* (
     );`;
     const result = (yield db_1.db.execute(sql2))[0];
     const warn = result.waringStatus;
-    const { insertId } = result;
+    const insertId = result.insertId;
     if (warn) {
         console.log(result);
         res.status(500).send();
     }
     else {
-        console.log(result);
-        res.status(201).send();
+        let sql = `SELECT * FROM checklist`;
+        const [check] = (yield db_1.db.execute(sql));
+        const checklist = check.map((list) => __awaiter(void 0, void 0, void 0, function* () {
+            let sqlc = `INSERT INTO inspections (
+            item_name,item_id,car_id
+       ) 
+       VALUES (
+        '${list.item}',
+        ${list.id},
+        ${insertId}
+        );`;
+            const result = (yield db_1.db.execute(sqlc))[0];
+            return result;
+        }));
+        Promise.all(checklist).then((results) => {
+            console.log(results);
+            res.status(201).json(results);
+        });
     }
 }));
 app.get("/car/:id", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -342,8 +357,12 @@ app.post("/status", (req, res) => __awaiter(void 0, void 0, void 0, function* ()
                 nPlate +
                 "</b> a fost preluata de unul dintre mecanicii nostrii. Va vom tine la curent cu statusul acesteia!<p></br> Echipa Smart Service App";
             yield (0, mailer_1.sendEmail)(to, subject, html);
+            let sql = `SELECT * FROM jobs WHERE id = "${id}"`;
+            db_1.db.execute(sql);
+            const resu = (yield db_1.db.execute(sql))[0];
+            console.log(resu);
+            res.status(201).json(resu);
         }
-        res.status(201).send;
     }
 }));
 app.post("/cars/jobs", (req, res) => __awaiter(void 0, void 0, void 0, function* () {

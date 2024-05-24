@@ -7,11 +7,8 @@ import jwt from "jsonwebtoken";
 
 import express, { Express, Response, Request } from "express";
 import { RowDataPacket } from "mysql2";
-import e from "cors";
-import { execArgv } from "process";
-import { log } from "console";
 const app = express();
-
+const validator = require('validator');
 require("dotenv").config();
 
 app.use(cors());
@@ -24,11 +21,11 @@ app.get("/ampulamare", (req, res) => {
 app.post("/register", async (req, res) => {
   const bcrypt = require("bcrypt");
   const salts = parseInt(process.env.saltRounds || "");
-  const email = req.body.email;
+  const email = validator.escape(req.body.email);
   const password = req.body.password;
-  const name = req.body.name;
-  const adresa = req.body.adresa;
-  const telefon = req.body.telefon;
+  const name = validator.escape(req.body.name);
+  const adresa = validator.escape(req.body.adresa);
+  const telefon = validator.escape(req.body.telefon);
   let sql = ` SELECT * FROM users WHERE email = "${email}"`;
   const [resu] = await db.execute(sql);
   const passwordHash = await bcrypt.hash(password, salts);
@@ -70,7 +67,7 @@ app.post("/register", async (req, res) => {
 app.post("/login", async (req, res) => {
   const bcrypt = require("bcrypt");
   const salts = parseInt(process.env.saltRounds || "");
-  const email = req.body.email;
+  const email = validator.escape(req.body.email);
   const password = req.body.password;
   let sql = ` SELECT * FROM users WHERE email = "${email}"`;
   const resu = (await db.execute(sql))[0];
@@ -106,17 +103,18 @@ app.post("/login", async (req, res) => {
 
 app.get("/user", (req, res) => {
   const token = req.body.token || req.query.token;
-  if (!token) {
-    return res
-      .status(403)
-      .json({ err: "A token is required for authentication" });
-  }
-  const decoded = jwt.verify(token, process.env.TOKEN_KEY as string) as object;
-  if (token != null)
+  console.log("TOKEN:" + token);
+  if (token == "null") {
+    return res.status(201).json({ role: 0 });
+  } else {
+    const decoded = jwt.verify(
+      token,
+      process.env.TOKEN_KEY as string
+    ) as object;
     return res
       .status(201)
       .json({ role: (decoded as any).role, email: (decoded as any).email });
-  else return res.status(403);
+  }
 });
 app.get("/userdata", async (req, res) => {
   const token = req.body.token || req.query.token;
@@ -176,13 +174,31 @@ app.post("/car/add", async (req, res) => {
     );`;
   const result = (await db.execute(sql2))[0];
   const warn = (result as any).waringStatus;
-  const { insertId } = result as any;
+  const insertId = (result as any).insertId;
   if (warn) {
     console.log(result);
     res.status(500).send();
   } else {
-    console.log(result);
-    res.status(201).send();
+    let sql = `SELECT * FROM checklist`;
+    const [check] = (await db.execute(sql)) as Array<RowDataPacket>;
+    const checklist = check.map(
+      async (list: { id:number,item: string;}) => {
+        let sqlc = `INSERT INTO inspections (
+            item_name,item_id,car_id
+       ) 
+       VALUES (
+        '${list.item}',
+        ${list.id},
+        ${insertId}
+        );`;
+        const result = (await db.execute(sqlc))[0];
+        return result;
+      }
+    );
+    Promise.all(checklist).then((results) => {
+        console.log(results);
+        res.status(201).json(results);
+      });
   }
 });
 app.get("/car/:id", async (req, res) => {
@@ -346,8 +362,12 @@ app.post("/status", async (req, res) => {
         nPlate +
         "</b> a fost preluata de unul dintre mecanicii nostrii. Va vom tine la curent cu statusul acesteia!<p></br> Echipa Smart Service App";
       await sendEmail(to, subject, html);
+      let sql = `SELECT * FROM jobs WHERE id = "${id}"`;
+        db.execute(sql);
+        const resu = (await db.execute(sql))[0];
+        console.log(resu);
+        res.status(201).json(resu);
     }
-    res.status(201).send;
   }
 });
 app.post("/cars/jobs", async (req, res) => {
