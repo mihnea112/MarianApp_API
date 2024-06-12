@@ -376,6 +376,8 @@ app.post("/cars/jobs", (req, res) => __awaiter(void 0, void 0, void 0, function*
     const carswjobs = cars.map((car) => __awaiter(void 0, void 0, void 0, function* () {
         let sql = `SELECT *  FROM jobs WHERE carId=${car.id};`;
         const [jobs] = (yield db_1.db.execute(sql));
+        let sql3 = `Select email,telefon,name,adresa from users where id=${car.userId};`;
+        const [user] = (yield db_1.db.execute(sql3))[0];
         const jobswmec = jobs.map((job) => __awaiter(void 0, void 0, void 0, function* () {
             if (job.mecanicId != 0) {
                 let sql2 = `Select * from users where id=${job.mecanicId};`;
@@ -386,11 +388,10 @@ app.post("/cars/jobs", (req, res) => __awaiter(void 0, void 0, void 0, function*
                 return Object.assign(Object.assign({}, job), { mecanic: null });
         }));
         return Promise.all(jobswmec).then((result) => {
-            return Object.assign(Object.assign({}, car), { jobs: result });
+            return Object.assign(Object.assign({}, car), { jobs: result, user: user });
         });
     }));
     Promise.all(carswjobs).then((results) => {
-        console.log(results);
         res.status(201).json(results);
     });
 }));

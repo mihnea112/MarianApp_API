@@ -378,9 +378,11 @@ app.post("/cars/jobs", async (req, res) => {
   const decoded = jwt.verify(token, process.env.TOKEN_KEY as string) as any;
   let sql = `SELECT * FROM cars;`;
   const [cars] = (await db.execute(sql)) as Array<RowDataPacket>;
-  const carswjobs = cars.map(async (car: { nPlate: number; id: number }) => {
+  const carswjobs = cars.map(async (car: { nPlate: number; id: number, userId:number }) => {
     let sql = `SELECT *  FROM jobs WHERE carId=${car.id};`;
     const [jobs] = (await db.execute(sql)) as Array<RowDataPacket>;
+    let sql3 = `Select email,telefon,name,adresa from users where id=${car.userId};`;
+    const [user] = ((await db.execute(sql3)) as RowDataPacket[][])[0];
     const jobswmec = jobs.map(async (job: { mecanicId: number }) => {
       if (job.mecanicId != 0) {
         let sql2 = `Select * from users where id=${job.mecanicId};`;
@@ -389,11 +391,10 @@ app.post("/cars/jobs", async (req, res) => {
       } else return { ...job, mecanic: null };
     });
     return Promise.all(jobswmec).then((result) => {
-      return { ...car, jobs: result };
+      return { ...car, jobs: result, user:user};
     });
   });
   Promise.all(carswjobs).then((results) => {
-    console.log(results);
     res.status(201).json(results);
   });
 });
