@@ -409,7 +409,7 @@ app.post("/mecanic/car", async (req, res) => {
   let sql = `SELECT * FROM cars;`;
   const [cars] = (await db.execute(sql)) as Array<RowDataPacket>;
 
-  const carswemail = cars.map(
+  const carswemail = await cars.map(
     async (car: {
       id: number;
       VIN: string;

@@ -405,7 +405,7 @@ app.post("/mecanic/car", (req, res) => __awaiter(void 0, void 0, void 0, functio
     console.log(userId);
     let sql = `SELECT * FROM cars;`;
     const [cars] = (yield db_1.db.execute(sql));
-    const carswemail = cars.map((car) => __awaiter(void 0, void 0, void 0, function* () {
+    const carswemail = yield cars.map((car) => __awaiter(void 0, void 0, void 0, function* () {
         let sql = `SELECT * FROM jobs WHERE carId=${car.id} AND mecanicId=${userId} AND status!="Done"`;
         const [jobs] = (yield db_1.db.execute(sql));
         return Object.assign(Object.assign({}, car), { jobs: jobs });
