@@ -58,3 +58,4 @@ class db {
     }
 }
 exports.db = db;
+//# sourceMappingURL=db.js.map
