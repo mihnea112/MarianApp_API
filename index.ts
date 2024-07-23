@@ -8,7 +8,7 @@ import jwt from "jsonwebtoken";
 import express, { Express, Response, Request } from "express";
 import { RowDataPacket } from "mysql2";
 const app = express();
-const validator = require('validator');
+const validator = require("validator");
 require("dotenv").config();
 
 app.use(cors());
@@ -124,12 +124,34 @@ app.get("/userdata", async (req, res) => {
       .json({ err: "A token is required for authentication" });
   }
   const decoded = jwt.verify(token, process.env.TOKEN_KEY as string) as object;
-  let sql = ` SELECT name, email, adresa, telefon FROM users WHERE id = "${
+  let sql = ` SELECT name, adresa, telefon FROM users WHERE id = "${
     (decoded as any).id
   }"`;
   const resu = (await db.execute(sql))[0];
-  console.log(resu);
   res.status(201).json(resu as any);
+});
+app.post("/userdata/edit", async (req, res) => {
+  const token = req.body.token || req.query.token;
+  const name= req.body.name;
+  const adresa= req.body.adresa;
+  const telefon=req.body.telefon;
+  if (!token) {
+    return res
+      .status(403)
+      .json({ err: "A token is required for authentication" });
+  }
+  const decoded = jwt.verify(token, process.env.TOKEN_KEY as string) as object;
+  let sql = ` UPDATE users SET name = "${name}", adresa="${adresa}",telefon="${telefon}" WHERE (id = "${(decoded as any).id}");`;
+  const result = (await db.execute(sql))[0];
+  const warn = (result as any).waringStatus;
+  if (warn) {
+    console.log(result);
+    res.status(500).send();
+  } else {
+    console.log(result);
+    res.status(201).send();
+  }
+  
 });
 
 app.post("/car", async (req, res) => {
@@ -181,9 +203,8 @@ app.post("/car/add", async (req, res) => {
   } else {
     let sql = `SELECT * FROM checklist`;
     const [check] = (await db.execute(sql)) as Array<RowDataPacket>;
-    const checklist = check.map(
-      async (list: { id:number,item: string;}) => {
-        let sqlc = `INSERT INTO inspections (
+    const checklist = check.map(async (list: { id: number; item: string }) => {
+      let sqlc = `INSERT INTO inspections (
             item_name,item_id,car_id
        ) 
        VALUES (
@@ -191,14 +212,13 @@ app.post("/car/add", async (req, res) => {
         ${list.id},
         ${insertId}
         );`;
-        const result = (await db.execute(sqlc))[0];
-        return result;
-      }
-    );
+      const result = (await db.execute(sqlc))[0];
+      return result;
+    });
     Promise.all(checklist).then((results) => {
-        console.log(results);
-        res.status(201).json(results);
-      });
+      console.log(results);
+      res.status(201).json(results);
+    });
   }
 });
 app.get("/car/:id", async (req, res) => {
@@ -363,10 +383,10 @@ app.post("/status", async (req, res) => {
         "</b> a fost preluata de unul dintre mecanicii nostrii. Va vom tine la curent cu statusul acesteia!<p></br> Echipa Smart Service App";
       await sendEmail(to, subject, html);
       let sql = `SELECT * FROM jobs WHERE id = "${id}"`;
-        db.execute(sql);
-        const resu = (await db.execute(sql))[0];
-        console.log(resu);
-        res.status(201).json(resu);
+      db.execute(sql);
+      const resu = (await db.execute(sql))[0];
+      console.log(resu);
+      res.status(201).json(resu);
     }
   }
 });
@@ -378,22 +398,24 @@ app.post("/cars/jobs", async (req, res) => {
   const decoded = jwt.verify(token, process.env.TOKEN_KEY as string) as any;
   let sql = `SELECT * FROM cars;`;
   const [cars] = (await db.execute(sql)) as Array<RowDataPacket>;
-  const carswjobs = cars.map(async (car: { nPlate: number; id: number, userId:number }) => {
-    let sql = `SELECT *  FROM jobs WHERE carId=${car.id};`;
-    const [jobs] = (await db.execute(sql)) as Array<RowDataPacket>;
-    let sql3 = `Select email,telefon,name,adresa from users where id=${car.userId};`;
-    const [user] = ((await db.execute(sql3)) as RowDataPacket[][])[0];
-    const jobswmec = jobs.map(async (job: { mecanicId: number }) => {
-      if (job.mecanicId != 0) {
-        let sql2 = `Select * from users where id=${job.mecanicId};`;
-        const [user] = ((await db.execute(sql2)) as RowDataPacket[][])[0];
-        return { ...job, mecanic: user };
-      } else return { ...job, mecanic: null };
-    });
-    return Promise.all(jobswmec).then((result) => {
-      return { ...car, jobs: result, user:user};
-    });
-  });
+  const carswjobs = cars.map(
+    async (car: { nPlate: number; id: number; userId: number }) => {
+      let sql = `SELECT *  FROM jobs WHERE carId=${car.id};`;
+      const [jobs] = (await db.execute(sql)) as Array<RowDataPacket>;
+      let sql3 = `Select email,telefon,name,adresa from users where id=${car.userId};`;
+      const [user] = ((await db.execute(sql3)) as RowDataPacket[][])[0];
+      const jobswmec = jobs.map(async (job: { mecanicId: number }) => {
+        if (job.mecanicId != 0) {
+          let sql2 = `Select * from users where id=${job.mecanicId};`;
+          const [user] = ((await db.execute(sql2)) as RowDataPacket[][])[0];
+          return { ...job, mecanic: user };
+        } else return { ...job, mecanic: null };
+      });
+      return Promise.all(jobswmec).then((result) => {
+        return { ...car, jobs: result, user: user };
+      });
+    }
+  );
   Promise.all(carswjobs).then((results) => {
     res.status(201).json(results);
   });
@@ -416,14 +438,14 @@ app.post("/mecanic/car", async (req, res) => {
       nPlate: string;
       userId: number;
     }) => {
-      let sql = `SELECT * FROM jobs WHERE carId=${car.id} AND mecanicId=${userId} AND status!="Done"`;
+      let sql = `SELECT * FROM jobs WHERE carId=${car.id} AND mecanicId=${userId} AND status!='Done'`;
       const [jobs] = (await db.execute(sql)) as Array<RowDataPacket>;
+      console.log(car.id);
+      console.log();
+
       return { ...car, jobs: jobs };
     }
   );
-
-  console.log(carswemail);
-
   Promise.all(carswemail).then((results) => {
     res.status(201).json(results.filter((car) => car.jobs.length > 0));
   });
