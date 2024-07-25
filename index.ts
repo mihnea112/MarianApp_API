@@ -132,16 +132,18 @@ app.get("/userdata", async (req, res) => {
 });
 app.post("/userdata/edit", async (req, res) => {
   const token = req.body.token || req.query.token;
-  const name= req.body.name;
-  const adresa= req.body.adresa;
-  const telefon=req.body.telefon;
+  const name = req.body.name;
+  const adresa = req.body.adresa;
+  const telefon = req.body.telefon;
   if (!token) {
     return res
       .status(403)
       .json({ err: "A token is required for authentication" });
   }
   const decoded = jwt.verify(token, process.env.TOKEN_KEY as string) as object;
-  let sql = ` UPDATE users SET name = "${name}", adresa="${adresa}",telefon="${telefon}" WHERE (id = "${(decoded as any).id}");`;
+  let sql = ` UPDATE users SET name = "${name}", adresa="${adresa}",telefon="${telefon}" WHERE (id = "${
+    (decoded as any).id
+  }");`;
   const result = (await db.execute(sql))[0];
   const warn = (result as any).waringStatus;
   if (warn) {
@@ -151,7 +153,6 @@ app.post("/userdata/edit", async (req, res) => {
     console.log(result);
     res.status(201).send();
   }
-  
 });
 
 app.post("/car", async (req, res) => {
@@ -278,6 +279,7 @@ app.post("/jobs/add", async (req, res) => {
     res.status(201).send();
   }
 });
+
 app.get("/job/:id", async (req, res) => {
   const id = req.params.id;
   let sql = ` SELECT * FROM jobs WHERE carId = "${id}"`;
@@ -518,6 +520,37 @@ app.post("/piese", async (req, res) => {
     res.status(500).send();
   } else {
     console.log(result);
+    res.status(201).send();
+  }
+});
+app.post("/deadline", async (req, res) => {
+  const token = req.body.token || req.query.token;
+  const id = req.body.id;
+  const nPlate = req.body.nPlate;
+  const deadline = req.body.deadline;
+  const uId = req.body.uId;
+  if (!token) {
+    return res.status(403).json({ err: "A token is required for display" });
+  }
+  const decoded = jwt.verify(token, process.env.TOKEN_KEY as string) as any;
+  let sql2 = `UPDATE jobs SET deadline = "${deadline}" WHERE (id = "${id}");`;
+  const result = (await db.execute(sql2))[0];
+  const warn = (result as any).waringStatus;
+  if (warn) {
+    console.log(result);
+    res.status(500).send();
+  } else {
+    let sql = `Select email FROM users WHERE id=${uId}`;
+    const [ress] = (await db.execute(sql)) as Array<RowDataPacket>;
+    const to = (ress as any)[0].email;
+    const subject = "Update Service";
+    const html =
+      "<h1>Va salutam!</h1></br> <p>Masina cu numarul de inmatriculare <b>" +
+      nPlate +
+      "</b>va fi gata in aproximativ" +
+      deadline +
+      ". Va asteptam la service sa o preluati!<p></br> Echipa Smart Service App";
+    await sendEmail(to, subject, html);
     res.status(201).send();
   }
 });
